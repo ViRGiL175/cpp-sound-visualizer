@@ -1,0 +1,41 @@
+cmake_minimum_required(VERSION 3.5)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -DHAVE_STRUCT_TIMESPEC")
+set(PROJECT_NAME sound-visualizer)
+set(INSTALL_PATH ./out)
+set(SFML_ROOT D:/Code/Libs/SFML-2.3.2)
+set(FREEGLUT_DIRECTORY D:/Code/Libs/freeglut)
+set(GLEW_DIRECTORY D:/Code/Libs/glew-1.13.0)
+set(FMODEX_DIRECTORY "D:/Code/Libs/FMOD Studio API Windows/api/lowlevel")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${SFML_ROOT}/cmake/Modules)
+set(SFML_STATIC_LIBRARIES TRUE)
+
+project(${PROJECT_NAME})
+
+aux_source_directory(./ SOURCE_FILES)
+add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+
+find_package(SFML 2 REQUIRED graphics audio window system)
+if (SFML_FOUND)
+    include_directories(${SFML_INCLUDE_DIR})
+    target_link_libraries(${PROJECT_NAME} ${SFML_DEPENDENCIES})
+    target_link_libraries(${PROJECT_NAME} ${SFML_LIBRARIES})
+else ()
+    message(SEND_ERROR "SFML library not found. Please set SFML_ROOT.")
+endif ()
+
+find_library(FREEGLUT_LIB libfreeglut ${FREEGLUT_DIRECTORY}/lib)
+include_directories(${FREEGLUT_DIRECTORY}/include)
+target_link_libraries(${PROJECT_NAME} ${FREEGLUT_LIB})
+
+find_library(GLEW_LIB glew32 ${GLEW_DIRECTORY}/lib/Release/Win32)
+find_library(GLEW_DLL glew32 ${GLEW_DIRECTORY}/bin/Release/Win32)
+include_directories(${GLEW_DIRECTORY}/include)
+target_link_libraries(${PROJECT_NAME} ${GLEW_LIB})
+target_link_libraries(${PROJECT_NAME} ${GLEW_DLL})
+
+find_library(FMODEX_LIB fmod ${FMODEX_DIRECTORY}/lib)
+include_directories(${FMODEX_DIRECTORY}/inc)
+target_link_libraries(${PROJECT_NAME} ${FMODEX_LIB})
+
+target_link_libraries(${PROJECT_NAME} opengl32 glu32 pthread)
