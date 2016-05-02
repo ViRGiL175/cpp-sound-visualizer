@@ -2,8 +2,6 @@
 #include <SFML/System.hpp>
 #include <SFML/Window.hpp>
 
-#define GLEW_STATIC
-
 #include <GL/glew.h>
 #include <iostream>
 #include <fstream>
@@ -13,7 +11,7 @@ std::string get_file_contents(const char *filename) {
 	if (in) {
 		std::string contents;
 		in.seekg(0, std::ios::end);
-		contents.resize(in.tellg());
+		contents.resize((unsigned int) in.tellg());
 		in.seekg(0, std::ios::beg);
 		in.read(&contents[0], contents.size());
 		in.close();
@@ -24,8 +22,8 @@ std::string get_file_contents(const char *filename) {
 
 #define WIDTH 1280
 #define HEIGHT 720
-#define SHADER_FILE "Shader.frag"
-#define SONG_FILE "BTO.mp3"
+#define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader.frag"
+#define SONG_FILE "D:/Code/Projects/sound-visualizer/BTO.mp3"
 
 //Vertex shader
 const GLchar *vertexSource =
@@ -59,7 +57,7 @@ int main() {
 	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "Visualizer", sf::Style::Close);
 	window.setVerticalSyncEnabled(true);
 
-//	glewExperimental = GL_TRUE;
+	glewExperimental = GL_TRUE;
 	glewInit();
 
 	GLuint vao;
@@ -102,8 +100,8 @@ int main() {
 
 	// Specify the layout of the vertex data
 	GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-	glEnableVertexAttribArray(posAttrib);
-	glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray((GLuint) posAttrib);
+	glVertexAttribPointer((GLuint) posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
 	GLint timeLoc = glGetUniformLocation(shaderProgram, "iGlobalTime");
 
@@ -124,10 +122,10 @@ int main() {
 				case sf::Event::KeyPressed:
 					switch (windowEvent.key.code) {
 						case sf::Keyboard::P:
-							FMOD_System_CreateSound(fmodSystem, SONG_FILE, FMOD_CREATESAMPLE, 0, &fmodSound);
-							FMOD_Sound_SetMode(fmodSound, FMOD_LOOP_OFF);
-							FMOD_System_PlaySound(fmodSystem, fmodSound, 0, false, &fmodChannel);
-							FMOD_System_Update(fmodSystem);
+							result = FMOD_System_CreateSound(fmodSystem, SONG_FILE, FMOD_DEFAULT, 0, &fmodSound);
+							result = FMOD_Sound_SetMode(fmodSound, FMOD_LOOP_OFF);
+							result = FMOD_System_PlaySound(fmodSystem, fmodSound, 0, false, &fmodChannel);
+							result = FMOD_System_Update(fmodSystem);
 							break;
 						case sf::Keyboard::R: //Reload the shader
 							//hopefully this is safe
@@ -178,20 +176,23 @@ int main() {
 
 
 		float spectrum[256];
-		float wavedata[512];
+		float waveData[512];
+		float X = 1;
 
-		FMOD_DSP_PARAMETER_FFT *fft;
-		FMOD_DSP_GetParameterData(fmodDsp, FMOD_DSP_FFT_SPECTRUMDATA, (void **) &fft, 0, 0, 0);
-		for (int i = 0; i < fft->numchannels; i++) {
-			for (int bin = 0; bin < fft->length; bin++) {
-				spectrum[i] = fft->spectrum[i][bin];
-			}
+		for (int i = 0; i < 256; i++) {
+			spectrum[i] = static_cast <float> (rand()) / (RAND_MAX / X);
 		}
+
+		for (int i = 0; i < 512; i++) {
+			waveData[i] = static_cast <float> (rand()) / (RAND_MAX / X);
+		}
+
+		std::cout << spectrum[4] << std::endl;
 
 		GLfloat time = (GLfloat) clock() / (GLfloat) CLOCKS_PER_SEC;
 		glUniform1f(timeLoc, time);
 		glUniform1fv(sampleLoc, 256, spectrum);
-		glUniform1fv(waveLoc, 256, wavedata);
+		glUniform1fv(waveLoc, 256, waveData);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
