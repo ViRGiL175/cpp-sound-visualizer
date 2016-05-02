@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -DHAVE_STRUCT_TIMESPEC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -DHAVE_STRUCT_TIMESPEC -v")
 set(PROJECT_NAME sound-visualizer)
 set(INSTALL_PATH ./out)
 set(SFML_ROOT D:/Code/Libs/SFML-2.3.2)
@@ -34,8 +34,10 @@ include_directories(${GLEW_DIRECTORY}/include)
 target_link_libraries(${PROJECT_NAME} ${GLEW_LIB})
 target_link_libraries(${PROJECT_NAME} ${GLEW_DLL})
 
-find_library(FMODEX_LIB fmod ${FMODEX_DIRECTORY}/lib)
+find_library(FMODEX_LIB libfmod.a ${FMODEX_DIRECTORY}/lib)
+find_library(FMODEX_DLL fmod.dll ${FMODEX_DIRECTORY}/lib)
 include_directories(${FMODEX_DIRECTORY}/inc)
 target_link_libraries(${PROJECT_NAME} ${FMODEX_LIB})
+target_link_libraries(${PROJECT_NAME} ${FMODEX_DLL})
 
 target_link_libraries(${PROJECT_NAME} opengl32 glu32 pthread)

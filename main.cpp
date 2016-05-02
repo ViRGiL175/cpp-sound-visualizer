@@ -25,7 +25,7 @@ std::string get_file_contents(const char *filename) {
 #define WIDTH 1280
 #define HEIGHT 720
 #define SHADER_FILE "Shader.frag"
-#define SONG_FILE "Moonlight.mp3"
+#define SONG_FILE "BTO.mp3"
 
 //Vertex shader
 const GLchar *vertexSource =
@@ -45,20 +45,21 @@ struct ToGLStr {
 
 int main() {
 	//initiate FMOD
-	FMOD::System *system;
-	FMOD::Sound *sound;
-	FMOD::Channel *channel;
+	FMOD_SYSTEM *fmodSystem;
+	FMOD_SOUND *fmodSound;
+	FMOD_CHANNEL *fmodChannel = 0;
+	FMOD_DSP *fmodDsp;
+
 	FMOD_RESULT result;
 
-	FMOD::System_Create(&system);
-	channel = 0;
-	system->init(32, FMOD_INIT_NORMAL, 0);
+	FMOD_System_Create(&fmodSystem);
+	FMOD_System_Init(fmodSystem, 32, FMOD_INIT_NORMAL, 0);
 
 	//Create window
 	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "Visualizer", sf::Style::Close);
 	window.setVerticalSyncEnabled(true);
 
-	glewExperimental = GL_TRUE;
+//	glewExperimental = GL_TRUE;
 	glewInit();
 
 	GLuint vao;
@@ -123,9 +124,10 @@ int main() {
 				case sf::Event::KeyPressed:
 					switch (windowEvent.key.code) {
 						case sf::Keyboard::P:
-							system->createSound(SONG_FILE, FMOD_HARDWARE, 0, &sound);
-							sound->setMode(FMOD_LOOP_OFF);
-							system->playSound(FMOD_CHANNEL_FREE, sound, false, &channel);
+							FMOD_System_CreateSound(fmodSystem, SONG_FILE, FMOD_CREATESAMPLE, 0, &fmodSound);
+							FMOD_Sound_SetMode(fmodSound, FMOD_LOOP_OFF);
+							FMOD_System_PlaySound(fmodSystem, fmodSound, 0, false, &fmodChannel);
+							FMOD_System_Update(fmodSystem);
 							break;
 						case sf::Keyboard::R: //Reload the shader
 							//hopefully this is safe
@@ -174,10 +176,17 @@ int main() {
 			}
 		}
 
+
 		float spectrum[256];
 		float wavedata[512];
-		system->getWaveData(wavedata, 256, 0);
-		system->getSpectrum(spectrum, 256, 0, FMOD_DSP_FFT_WINDOW_TRIANGLE);
+
+		FMOD_DSP_PARAMETER_FFT *fft;
+		FMOD_DSP_GetParameterData(fmodDsp, FMOD_DSP_FFT_SPECTRUMDATA, (void **) &fft, 0, 0, 0);
+		for (int i = 0; i < fft->numchannels; i++) {
+			for (int bin = 0; bin < fft->length; bin++) {
+				spectrum[i] = fft->spectrum[i][bin];
+			}
+		}
 
 		GLfloat time = (GLfloat) clock() / (GLfloat) CLOCKS_PER_SEC;
 		glUniform1f(timeLoc, time);
