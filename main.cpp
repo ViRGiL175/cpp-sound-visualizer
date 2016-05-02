@@ -1,26 +1,23 @@
 #include "fmod.hpp"
-#include "fmod_errors.h"
 #include <SFML/System.hpp>
 #include <SFML/Window.hpp>
+
 #define GLEW_STATIC
+
 #include <GL/glew.h>
 #include <iostream>
 #include <fstream>
-#include <string>
-#include <cerrno>
 
-std::string get_file_contents(const char *filename)
-{
+std::string get_file_contents(const char *filename) {
 	std::ifstream in(filename, std::ios::in | std::ios::binary);
-	if (in)
-	{
+	if (in) {
 		std::string contents;
 		in.seekg(0, std::ios::end);
 		contents.resize(in.tellg());
 		in.seekg(0, std::ios::beg);
 		in.read(&contents[0], contents.size());
 		in.close();
-		return(contents);
+		return (contents);
 	}
 	return "";
 }
@@ -31,7 +28,7 @@ std::string get_file_contents(const char *filename)
 #define SONG_FILE "Moonlight.mp3"
 
 //Vertex shader
-const GLchar* vertexSource =
+const GLchar *vertexSource =
 		"#version 150 core\n"
 				"in vec2 position;"
 				"void main() {"
@@ -40,8 +37,10 @@ const GLchar* vertexSource =
 
 struct ToGLStr {
 	const char *p;
-	ToGLStr(const std::string& s) : p(s.c_str()) {}
-	operator const char**() { return &p; }
+
+	ToGLStr(const std::string &s) : p(s.c_str()) { }
+
+	operator const char **() { return &p; }
 };
 
 int main() {
@@ -53,10 +52,10 @@ int main() {
 
 	FMOD::System_Create(&system);
 	channel = 0;
-	system->init(32, FMOD_INIT_NORMAL,0);
+	system->init(32, FMOD_INIT_NORMAL, 0);
 
 	//Create window
-	sf::Window window(sf::VideoMode(WIDTH,HEIGHT), "Visualizer", sf::Style::Close);
+	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "Visualizer", sf::Style::Close);
 	window.setVerticalSyncEnabled(true);
 
 	glewExperimental = GL_TRUE;
@@ -70,12 +69,12 @@ int main() {
 	glGenBuffers(1, &vbo);
 
 	float vertices[] = {
-			-1.0f,  1.0f,
+			-1.0f, 1.0f,
 			1.0f, 1.0f,
 			1.0f, -1.0f,
-			-1.0f,1.0f,
-			-1.0f,-1.0f,
-			1.0f,-1.0f
+			-1.0f, 1.0f,
+			-1.0f, -1.0f,
+			1.0f, -1.0f
 	};
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -112,19 +111,17 @@ int main() {
 
 	GLint resLoc = glGetUniformLocation(shaderProgram, "iResolution");
 
-	glUniform3f(resLoc, WIDTH, HEIGHT, WIDTH*HEIGHT);
+	glUniform3f(resLoc, WIDTH, HEIGHT, WIDTH * HEIGHT);
 
-	while(window.isOpen())
-	{
+	while (window.isOpen()) {
 		sf::Event windowEvent;
-		while(window.pollEvent(windowEvent))
-		{
-			switch(windowEvent.type) {
+		while (window.pollEvent(windowEvent)) {
+			switch (windowEvent.type) {
 				case sf::Event::Closed:
 					window.close();
 					break;
 				case sf::Event::KeyPressed:
-					switch(windowEvent.key.code) {
+					switch (windowEvent.key.code) {
 						case sf::Keyboard::P:
 							system->createSound(SONG_FILE, FMOD_HARDWARE, 0, &sound);
 							sound->setMode(FMOD_LOOP_OFF);
@@ -167,7 +164,7 @@ int main() {
 
 							resLoc = glGetUniformLocation(shaderProgram, "iResolution");
 
-							glUniform3f(resLoc, WIDTH, HEIGHT, WIDTH*HEIGHT);
+							glUniform3f(resLoc, WIDTH, HEIGHT, WIDTH * HEIGHT);
 							break;
 						case sf::Keyboard::Escape:
 							window.close();
@@ -182,11 +179,11 @@ int main() {
 		system->getWaveData(wavedata, 256, 0);
 		system->getSpectrum(spectrum, 256, 0, FMOD_DSP_FFT_WINDOW_TRIANGLE);
 
-		GLfloat time = (GLfloat)clock()/ (GLfloat)CLOCKS_PER_SEC;
+		GLfloat time = (GLfloat) clock() / (GLfloat) CLOCKS_PER_SEC;
 		glUniform1f(timeLoc, time);
 		glUniform1fv(sampleLoc, 256, spectrum);
 		glUniform1fv(waveLoc, 256, wavedata);
-		glClearColor(0.0f,0.0f,0.0f,1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		window.display();
