@@ -5,6 +5,7 @@
 #include <GL/glew.h>
 #include <iostream>
 #include <fstream>
+#include <cstring>
 
 std::string get_file_contents(const char *filename) {
 	std::ifstream in(filename, std::ios::in | std::ios::binary);
@@ -33,6 +34,11 @@ const GLchar *vertexSource =
 				"   gl_Position = vec4(position, 0.0, 1.0);"
 				"}";
 
+FMOD_RESULT F_CALLBACK myDSPCallback(FMOD_DSP_STATE *dsp_state, float *inbuffer, float *outbuffer, unsigned int length,
+                                     int inchannels, int *outchannels);
+
+void checkError(FMOD_RESULT result);
+
 struct ToGLStr {
 	const char *p;
 
@@ -46,12 +52,14 @@ int main() {
 	FMOD_SYSTEM *fmodSystem;
 	FMOD_SOUND *fmodSound;
 	FMOD_CHANNEL *fmodChannel = 0;
+	FMOD_CHANNELGROUP *fmodMasterChannelGroup;
 	FMOD_DSP *fmodDsp;
 
 	FMOD_RESULT result;
 
 	FMOD_System_Create(&fmodSystem);
-	FMOD_System_Init(fmodSystem, 32, FMOD_INIT_NORMAL, 0);
+	result = FMOD_System_Init(fmodSystem, 32, FMOD_INIT_NORMAL, 0);
+	checkError(result);
 
 	//Create window
 	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "Visualizer", sf::Style::Close);
@@ -123,9 +131,13 @@ int main() {
 					switch (windowEvent.key.code) {
 						case sf::Keyboard::P:
 							result = FMOD_System_CreateSound(fmodSystem, SONG_FILE, FMOD_DEFAULT, 0, &fmodSound);
+							checkError(result);
 							result = FMOD_Sound_SetMode(fmodSound, FMOD_LOOP_OFF);
+							checkError(result);
 							result = FMOD_System_PlaySound(fmodSystem, fmodSound, 0, false, &fmodChannel);
+							checkError(result);
 							result = FMOD_System_Update(fmodSystem);
+							checkError(result);
 							break;
 						case sf::Keyboard::R: //Reload the shader
 							//hopefully this is safe
@@ -179,9 +191,33 @@ int main() {
 		float waveData[512];
 		float X = 1;
 
-		for (int i = 0; i < 256; i++) {
-			spectrum[i] = static_cast <float> (rand()) / (RAND_MAX / X);
+//		Create the DSP effect.
+		{
+			FMOD_DSP_DESCRIPTION fmodDspDescription;
+			memset(&fmodDspDescription, 0, sizeof(fmodDspDescription));
+
+			strncpy(fmodDspDescription.name, "Spectrum DSP unit", sizeof(fmodDspDescription.name));
+			fmodDspDescription.version = 0x00010000;
+			fmodDspDescription.numinputbuffers = 1;
+			fmodDspDescription.numoutputbuffers = 1;
+			fmodDspDescription.read = myDSPCallback;
+			fmodDspDescription.userdata = (void *) 0x12345678;
+
+			result = FMOD_System_CreateDSP(fmodSystem, &fmodDspDescription, &fmodDsp);
+			checkError(result);
 		}
+
+//		Attach the DSP, inactive by default.
+
+		result = FMOD_DSP_SetBypass(fmodDsp, true);
+		checkError(result);
+		result = FMOD_System_GetMasterChannelGroup(fmodSystem, &fmodMasterChannelGroup);
+		checkError(result);
+		result = FMOD_ChannelGroup_AddDSP(fmodMasterChannelGroup, 0, fmodDsp);
+		checkError(result);
+
+		FMOD_DSP_GetParameterFloat(fmodDsp, FMOD_DSP_FFT_SPECTRUMDATA, spectrum, NULL, 8);
+
 
 		for (int i = 0; i < 512; i++) {
 			waveData[i] = static_cast <float> (rand()) / (RAND_MAX / X);
@@ -207,4 +243,50 @@ int main() {
 	glDeleteBuffers(1, &vbo);
 
 	glDeleteVertexArrays(1, &vao);
+}
+
+FMOD_RESULT F_CALLBACK myDSPCallback(FMOD_DSP_STATE *dsp_state, float *inbuffer, float *outbuffer, unsigned int length,
+                                     int inchannels, int *outchannels) {
+	FMOD_RESULT result;
+	char name[256];
+	void *userData;
+	FMOD_DSP *fmodDsp = dsp_state->instance;
+
+	/*
+		This redundant call just shows using the instance parameter of FMOD_DSP_STATE to
+		call a DSP information function.
+	*/
+	result = FMOD_DSP_GetInfo(fmodDsp, name, 0, 0, 0, 0);
+	checkError(result);
+
+	result = FMOD_DSP_GetUserData(fmodDsp, &userData);
+	checkError(result);
+
+	/*
+		This loop assumes inchannels = outchannels, which it will be if the DSP is created with '0'
+		as the number of channels in FMOD_DSP_DESCRIPTION.
+		Specifying an actual channel count will mean you have to take care of any number of channels coming in,
+		but outputting the number of channels specified. Generally it is best to keep the channel
+		count at 0 for maximum compatibility.
+	*/
+	for (unsigned int samp = 0; samp < length; samp++) {
+		/*
+			Feel free to unroll this.
+		*/
+		for (int chan = 0; chan < *outchannels; chan++) {
+			/*
+				This DSP filter just halves the volume!
+				Input is modified, and sent to output.
+			*/
+			outbuffer[(samp * *outchannels) + chan] = inbuffer[(samp * inchannels) + chan] * 0.2f;
+		}
+	}
+
+	return FMOD_OK;
+}
+
+void checkError(FMOD_RESULT result) {
+	if (result != FMOD_OK) {
+		std::cout << result << std::endl;
+	}
 }
