@@ -26,10 +26,9 @@ std::string get_file_contents(const char *filename) {
 #define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader.frag"
 #define SONG_FILE "D:/Code/Projects/sound-visualizer/BTO.mp3"
 
-float spectrum[256];
 float waveData[512];
 
-//Vertex shader
+// Vertex shader
 const GLchar *vertexSource =
 		"#version 150 core\n"
 				"in vec2 position;"
@@ -46,7 +45,7 @@ FMOD_RESULT F_CALLBACK myDSPCallback(
 		int *outChannels
 );
 
-void printSpectrum();
+void printSpectrum(float *spectrumFloatArray);
 
 struct ToGLStr {
 	const char *p;
@@ -64,12 +63,14 @@ int main() {
 	FMOD_CHANNELGROUP *fModMasterChannelGroup;
 	FMOD_DSP *fModFFTDsp, *fModWaveDataDsp;
 
+	float spectrum[256];
+
 	FMOD_RESULT result;
 
 	FMOD_System_Create(&fModSystem);
 	result = FMOD_System_Init(fModSystem, 32, FMOD_INIT_NORMAL, 0);
 
-//	Create the WaveData DSP effect.
+	// Create the WaveData DSP effect.
 	{
 		FMOD_DSP_DESCRIPTION fModWaveDataDspDescription;
 		memset(&fModWaveDataDspDescription, 0, sizeof(fModWaveDataDspDescription));
@@ -84,10 +85,10 @@ int main() {
 		result = FMOD_System_CreateDSP(fModSystem, &fModWaveDataDspDescription, &fModWaveDataDsp);
 	}
 
-//  Create the FFT DSP effect.
+	// Create the FFT DSP effect.
 	FMOD_System_CreateDSPByType(fModSystem, FMOD_DSP_TYPE_FFT, &fModFFTDsp);
 
-//	Attach the DSPs, inactive by default.
+	// Attach the DSPs, inactive by default.
 	result = FMOD_DSP_SetBypass(fModFFTDsp, true);
 	result = FMOD_DSP_SetBypass(fModWaveDataDsp, false);
 	result = FMOD_System_GetMasterChannelGroup(fModSystem, &fModMasterChannelGroup);
@@ -95,10 +96,9 @@ int main() {
 	result = FMOD_ChannelGroup_AddDSP(fModMasterChannelGroup, 0, fModWaveDataDsp);
 
 	FMOD_DSP_GetParameterFloat(fModFFTDsp, FMOD_DSP_FFT_SPECTRUMDATA, spectrum, NULL, 8);
+	printSpectrum(spectrum);
 
-	printSpectrum();
-
-	//Create window
+	// Create window
 	sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "Visualizer", sf::Style::Close);
 	window.setVerticalSyncEnabled(true);
 
@@ -229,7 +229,7 @@ int main() {
 		window.display();
 	}
 
-	//Clean up
+	// Clean up
 	glDeleteProgram(shaderProgram);
 	glDeleteShader(fragmentShader);
 	glDeleteShader(vertexShader);
@@ -239,51 +239,18 @@ int main() {
 	glDeleteVertexArrays(1, &vao);
 }
 
-void printSpectrum() {
+void printSpectrum(float *spectrumFloatArray) {
 	for (int i = 0; i < 256; ++i) {
-		std::cout << spectrum[i] << ' ';
+		std::cout << spectrumFloatArray[i] << ' ';
 	}
 	std::cout << std::endl;
 }
 
 FMOD_RESULT F_CALLBACK myDSPCallback(FMOD_DSP_STATE *dsp_state, float *inBuffer, float *outBuffer, unsigned int length,
                                      int inChannels, int *outChannels) {
-	FMOD_RESULT result;
-	char name[256];
-	void *userData;
-	FMOD_DSP *fModDsp = dsp_state->instance;
-
-	/*
-		This redundant call just shows using the instance parameter of FMOD_DSP_STATE to
-		call a DSP information function.
-	*/
-	result = FMOD_DSP_GetInfo(fModDsp, name, 0, 0, 0, 0);
-	result = FMOD_DSP_GetUserData(fModDsp, &userData);
-
 	int arraySize = length / 4;
 	for (int i = 0; i < (arraySize); ++i) {
 		waveData[i] = inBuffer[i];
 	}
-
-	/*
-		This loop assumes inChannels = outChannels, which it will be if the DSP is created with '0'
-		as the number of channels in FMOD_DSP_DESCRIPTION.
-		Specifying an actual channel count will mean you have to take care of any number of channels coming in,
-		but outputting the number of channels specified. Generally it is best to keep the channel
-		count at 0 for maximum compatibility.
-	*/
-	for (unsigned int samp = 0; samp < length; samp++) {
-		/*
-			Feel free to unroll this.
-		*/
-		for (int chan = 0; chan < *outChannels; chan++) {
-			/*
-				This DSP filter just halves the volume!
-				Input is modified, and sent to output.
-			*/
-			outBuffer[(samp * *outChannels) + chan] = inBuffer[(samp * inChannels) + chan] * 0.2f;
-		}
-	}
-
 	return FMOD_OK;
 }
