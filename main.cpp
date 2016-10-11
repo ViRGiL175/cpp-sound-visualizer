@@ -1,4 +1,3 @@
-#include "fmod.hpp"
 #include <SFML/System.hpp>
 #include <SFML/Window.hpp>
 
@@ -36,15 +35,6 @@ const GLchar *vertexSource =
                 "   gl_Position = vec4(position, 0.0, 1.0);"
                 "}";
 
-FMOD_RESULT F_CALLBACK myDSPCallback(
-        FMOD_DSP_STATE *dsp_state,
-        float *inBuffer,
-        float *outBuffer,
-        unsigned int length,
-        int inChannels,
-        int *outChannels
-);
-
 void printSpectrum(float *spectrumFloatArray);
 
 struct ToGLStr {
@@ -56,46 +46,9 @@ struct ToGLStr {
 };
 
 int main() {
-    //initiate FMOD
-    FMOD_SYSTEM *fModSystem;
-    FMOD_SOUND *fModSound;
-    FMOD_CHANNEL *fModChannel = 0;
-    FMOD_CHANNELGROUP *fModMasterChannelGroup;
-    FMOD_DSP *fModFFTDsp, *fModWaveDataDsp;
 
     float spectrum[256];
 
-    FMOD_RESULT result;
-
-    FMOD_System_Create(&fModSystem);
-    result = FMOD_System_Init(fModSystem, 32, FMOD_INIT_NORMAL, 0);
-
-    // Create the WaveData DSP effect.
-    {
-        FMOD_DSP_DESCRIPTION fModWaveDataDspDescription;
-        memset(&fModWaveDataDspDescription, 0, sizeof(fModWaveDataDspDescription));
-
-        strncpy(fModWaveDataDspDescription.name, "Spectrum DSP unit", sizeof(fModWaveDataDspDescription.name));
-        fModWaveDataDspDescription.version = 0x00010000;
-        fModWaveDataDspDescription.numinputbuffers = 1;
-        fModWaveDataDspDescription.numoutputbuffers = 1;
-        fModWaveDataDspDescription.read = myDSPCallback;
-        fModWaveDataDspDescription.userdata = (void *) 0x12345678;
-
-        result = FMOD_System_CreateDSP(fModSystem, &fModWaveDataDspDescription, &fModWaveDataDsp);
-    }
-
-    // Create the FFT DSP effect.
-    FMOD_System_CreateDSPByType(fModSystem, FMOD_DSP_TYPE_FFT, &fModFFTDsp);
-
-    // Attach the DSPs, inactive by default.
-    result = FMOD_DSP_SetBypass(fModFFTDsp, true);
-    result = FMOD_DSP_SetBypass(fModWaveDataDsp, false);
-    result = FMOD_System_GetMasterChannelGroup(fModSystem, &fModMasterChannelGroup);
-    result = FMOD_ChannelGroup_AddDSP(fModMasterChannelGroup, 0, fModFFTDsp);
-    result = FMOD_ChannelGroup_AddDSP(fModMasterChannelGroup, 0, fModWaveDataDsp);
-
-    FMOD_DSP_GetParameterFloat(fModFFTDsp, FMOD_DSP_FFT_SPECTRUMDATA, spectrum, NULL, 8);
     printSpectrum(spectrum);
 
     // Create window
@@ -167,10 +120,9 @@ int main() {
                 case sf::Event::KeyPressed:
                     switch (windowEvent.key.code) {
                         case sf::Keyboard::P:
-                            result = FMOD_System_CreateSound(fModSystem, SONG_FILE, FMOD_DEFAULT, 0, &fModSound);
-                            result = FMOD_Sound_SetMode(fModSound, FMOD_LOOP_OFF);
-                            result = FMOD_System_PlaySound(fModSystem, fModSound, 0, false, &fModChannel);
-                            result = FMOD_System_Update(fModSystem);
+
+//                            Play Sound
+
                             break;
                         case sf::Keyboard::R: //Reload the shader
                             //hopefully this is safe
@@ -244,13 +196,4 @@ void printSpectrum(float *spectrumFloatArray) {
         std::cout << spectrumFloatArray[i] << ' ';
     }
     std::cout << std::endl;
-}
-
-FMOD_RESULT F_CALLBACK myDSPCallback(FMOD_DSP_STATE *dsp_state, float *inBuffer, float *outBuffer, unsigned int length,
-                                     int inChannels, int *outChannels) {
-    int arraySize = length / 4;
-    for (int i = 0; i < (arraySize); ++i) {
-        waveData[i] = inBuffer[i];
-    }
-    return FMOD_OK;
 }
