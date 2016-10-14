@@ -5,6 +5,13 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <transform/FftFactory.h>
+#include <tools/TextPlot.h>
+#include <SFML/Audio/SoundBuffer.hpp>
+#include <SFML/Audio/Sound.hpp>
+#include <SFML/Audio/Music.hpp>
+#include <wrappers/SoundBufferAdapter.h>
+#include "FFTAudioStream.h"
 
 std::string get_file_contents(const char *filename) {
     std::ifstream in(filename, std::ios::in | std::ios::binary);
@@ -23,7 +30,7 @@ std::string get_file_contents(const char *filename) {
 #define WIDTH 1280
 #define HEIGHT 720
 #define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader.frag"
-#define SONG_FILE "D:/Code/Projects/sound-visualizer/BTO.mp3"
+#define SONG_FILE "D:/Code/Projects/sound-visualizer/BTO.ogg"
 
 float waveData[512];
 
@@ -34,8 +41,6 @@ const GLchar *vertexSource =
                 "void main() {"
                 "   gl_Position = vec4(position, 0.0, 1.0);"
                 "}";
-
-void printSpectrum(float *spectrumFloatArray);
 
 struct ToGLStr {
     const char *p;
@@ -49,7 +54,13 @@ int main() {
 
     float spectrum[256];
 
-    printSpectrum(spectrum);
+    // load an audio soundBuffer from a sound file
+    sf::SoundBuffer soundBuffer;
+    soundBuffer.loadFromFile(SONG_FILE);
+
+    // initialize and play our custom stream
+    FFTAudioStream fftAudioStream;
+    fftAudioStream.load(soundBuffer);
 
     // Create window
     sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "Visualizer", sf::Style::Close);
@@ -115,14 +126,16 @@ int main() {
         while (window.pollEvent(windowEvent)) {
             switch (windowEvent.type) {
                 case sf::Event::Closed:
+                    fftAudioStream.stop();
                     window.close();
                     break;
                 case sf::Event::KeyPressed:
                     switch (windowEvent.key.code) {
                         case sf::Keyboard::P:
-
-//                            Play Sound
-
+                            // Play Sound
+                            fftAudioStream.getStatus() != sf::SoundSource::Status::Playing
+                            ? fftAudioStream.play()
+                            : fftAudioStream.pause();
                             break;
                         case sf::Keyboard::R: //Reload the shader
                             //hopefully this is safe
@@ -189,11 +202,4 @@ int main() {
     glDeleteBuffers(1, &vbo);
 
     glDeleteVertexArrays(1, &vao);
-}
-
-void printSpectrum(float *spectrumFloatArray) {
-    for (int i = 0; i < 256; ++i) {
-        std::cout << spectrumFloatArray[i] << ' ';
-    }
-    std::cout << std::endl;
 }
