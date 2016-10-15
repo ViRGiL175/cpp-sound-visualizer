@@ -5,12 +5,9 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
-#include <transform/FftFactory.h>
-#include <tools/TextPlot.h>
 #include <SFML/Audio/SoundBuffer.hpp>
 #include <SFML/Audio/Sound.hpp>
 #include <SFML/Audio/Music.hpp>
-#include <wrappers/SoundBufferAdapter.h>
 #include "FFTAudioStream.h"
 
 std::string get_file_contents(const char *filename) {
@@ -32,7 +29,8 @@ std::string get_file_contents(const char *filename) {
 #define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader.frag"
 #define SONG_FILE "D:/Code/Projects/sound-visualizer/BTO.ogg"
 
-float waveData[512];
+static const int WAVE_DATA_SIZE = 256;
+float waveData[WAVE_DATA_SIZE];
 
 // Vertex shader
 const GLchar *vertexSource =
@@ -187,7 +185,17 @@ int main() {
         GLfloat time = (GLfloat) clock() / (GLfloat) CLOCKS_PER_SEC;
         glUniform1f(timeLoc, time);
         glUniform1fv(sampleLoc, 256, spectrum);
-        glUniform1fv(waveLoc, 256, waveData);
+
+        const auto filteredWaveDataVector = fftAudioStream.getWaveDataVector();
+
+        if (filteredWaveDataVector.data() != NULL) {
+            for (int i = 0; i < WAVE_DATA_SIZE; i++) {
+                waveData[i] = (float) filteredWaveDataVector[i].re();
+                waveData[i] *= 0.0001;
+            }
+        }
+
+        glUniform1fv(waveLoc, WAVE_DATA_SIZE, waveData);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glDrawArrays(GL_TRIANGLES, 0, 6);

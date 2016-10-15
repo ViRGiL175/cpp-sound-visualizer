@@ -3,9 +3,8 @@
 //
 
 #include <SFML/Audio.hpp>
-#include <tools/TextPlot.h>
-#include <transform/FftFactory.h>
 #include "FFTAudioStream.h"
+#include "fft.h"
 
 #define SONG_FILE "D:/Code/Projects/sound-visualizer/BTO.ogg"
 
@@ -13,22 +12,17 @@ void FFTAudioStream::load(const sf::SoundBuffer &buffer) {
     // extract the audio samples from the sound buffer to our own container
     m_samples.assign(buffer.getSamples(), buffer.getSamples() + buffer.getSampleCount());
 
-    ShortComplex shortComplex;
-    shortComplex.im = 0.0;
-
+    complex temporaryComplex;
     filterShortComplexArray.resize(SAMPLES_TO_STREAM);
     for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
-//        shortComplex.re = (i > SAMPLES_TO_STREAM / 2) ? 1.0 : 0.0;
-        shortComplex.re = 1.0;
-        filterShortComplexArray[i] = shortComplex;
+        temporaryComplex = (i > LOW_FILTER_VALUE && i < HIGH_FILTER_VALUE) ? 1.0 : 0.0;
+        filterShortComplexArray[i] = temporaryComplex;
     }
 
     currentSampleVector.resize(SAMPLES_TO_STREAM);
 
     // reset the current playing position
     m_currentSample = 0;
-
-    temporaryShortComplex.im = 0.0;
 
     // initialize the base class
     initialize(buffer.getChannelCount(), buffer.getSampleRate());
@@ -39,24 +33,17 @@ bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
     // in a more robust implementation, it should be a fixed
     // amount of time rather than an arbitrary number of samples
 
-    for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
-        temporaryShortComplex.re = m_samples[m_currentSample + i];
-        currentSampleVector[i] = temporaryShortComplex;
-    }
+    getStreamSamples();
 
-    fft(currentSampleVector.data(), SAMPLES_TO_STREAM, false);
+    CFFT::Forward(currentSampleVector.data(), SAMPLES_TO_STREAM);
 
-    std::transform(
-            std::begin(currentSampleVector),
-            std::end(currentSampleVector),
-            std::begin(filterShortComplexArray),
-            std::begin(currentSampleVector),
-            [](ShortComplex x, ShortComplex y) { return x * y; }
-    );
+    applyFilterToSpectrum(true);
 
-    fft(currentSampleVector.data(), SAMPLES_TO_STREAM, true);
+    CFFT::Inverse(currentSampleVector.data(), SAMPLES_TO_STREAM);
 
-    applyFilteredSignalToSound();
+    filteredWaveDataVector = currentSampleVector;
+
+    applyFilteredSignalToSound(false);
 
     // set the pointer to the next audio samples to be played
     data.samples = &m_samples[m_currentSample];
@@ -75,14 +62,27 @@ bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
     }
 }
 
-const std::vector<ShortComplex> &FFTAudioStream::getCurrentSampleVector() const {
-    return currentSampleVector;
+void FFTAudioStream::getStreamSamples() {
+    for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
+        temporaryShortComplex = m_samples[m_currentSample + i];
+        currentSampleVector[i] = temporaryShortComplex;
+    }
 }
 
-void FFTAudioStream::applyFilteredSignalToSound() {
-    for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
-        temporaryShortComplex.re = currentSampleVector[i].re;
-        m_samples[m_currentSample + i] = (sf::Int16) temporaryShortComplex.re;
+void FFTAudioStream::applyFilterToSpectrum(bool isApplied) {
+    if (isApplied) {
+        for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
+            currentSampleVector[i] = currentSampleVector[i] * filterShortComplexArray[i];
+        }
+    }
+}
+
+void FFTAudioStream::applyFilteredSignalToSound(bool isApplied) {
+    if (isApplied) {
+        for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
+            temporaryShortComplex = currentSampleVector[i];
+            m_samples[m_currentSample + i] = (sf::Int16) temporaryShortComplex.re();
+        }
     }
 }
 
@@ -91,3 +91,6 @@ void FFTAudioStream::onSeek(sf::Time timeOffset) {
     m_currentSample = static_cast<std::size_t>(timeOffset.asSeconds() * getSampleRate() * getChannelCount());
 }
 
+const std::vector<complex> &FFTAudioStream::getWaveDataVector() const {
+    return filteredWaveDataVector;
+}
