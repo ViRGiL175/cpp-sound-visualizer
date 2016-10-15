@@ -31,6 +31,7 @@ std::string get_file_contents(const char *filename) {
 
 static const int WAVE_DATA_SIZE = 256;
 float waveData[WAVE_DATA_SIZE];
+float spectrumData[WAVE_DATA_SIZE];
 
 // Vertex shader
 const GLchar *vertexSource =
@@ -49,8 +50,6 @@ struct ToGLStr {
 };
 
 int main() {
-
-    float spectrum[256];
 
     // load an audio soundBuffer from a sound file
     sf::SoundBuffer soundBuffer;
@@ -184,18 +183,30 @@ int main() {
 
         GLfloat time = (GLfloat) clock() / (GLfloat) CLOCKS_PER_SEC;
         glUniform1f(timeLoc, time);
-        glUniform1fv(sampleLoc, 256, spectrum);
 
-        const auto filteredWaveDataVector = fftAudioStream.getWaveDataVector();
+        const auto filteredSpectrumDataVector = fftAudioStream.getCurrentSampleSpectrumVector();
+
+        if (filteredSpectrumDataVector.data() != NULL) {
+            int picker = FFTAudioStream::SAMPLES_TO_STREAM / 4 / WAVE_DATA_SIZE;
+            for (int i = 0; i < WAVE_DATA_SIZE; i++) {
+                spectrumData[i] = (float) filteredSpectrumDataVector[i * picker].re();
+                spectrumData[i] *= 0.000001;
+            }
+        }
+
+        glUniform1fv(sampleLoc, WAVE_DATA_SIZE, spectrumData);
+
+        const auto filteredWaveDataVector = fftAudioStream.getCurrentSampleWaveVector();
 
         if (filteredWaveDataVector.data() != NULL) {
+            int picker = FFTAudioStream::SAMPLES_TO_STREAM / WAVE_DATA_SIZE;
             for (int i = 0; i < WAVE_DATA_SIZE; i++) {
-                waveData[i] = (float) filteredWaveDataVector[i].re();
+                waveData[i] = (float) filteredWaveDataVector[i * picker].re();
                 waveData[i] *= 0.0001;
             }
         }
 
-        glUniform1fv(waveLoc, WAVE_DATA_SIZE, waveData);
+        glUniform1fv(waveLoc, WAVE_DATA_SIZE, spectrumData);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         glDrawArrays(GL_TRIANGLES, 0, 6);

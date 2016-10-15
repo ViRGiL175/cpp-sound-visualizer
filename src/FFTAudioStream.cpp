@@ -12,14 +12,16 @@ void FFTAudioStream::load(const sf::SoundBuffer &buffer) {
     // extract the audio samples from the sound buffer to our own container
     m_samples.assign(buffer.getSamples(), buffer.getSamples() + buffer.getSampleCount());
 
+    highFilterValue = 50;
+    lowFilterValue = 30;
     complex temporaryComplex;
-    filterShortComplexArray.resize(SAMPLES_TO_STREAM);
-    for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
-        temporaryComplex = (i > LOW_FILTER_VALUE && i < HIGH_FILTER_VALUE) ? 1.0 : 0.0;
+    filterShortComplexArray.resize(SAMPLES_TO_STREAM / 4);
+    for (int i = 0; i < SAMPLES_TO_STREAM / 4; i++) {
+        temporaryComplex = (i > lowFilterValue && i < highFilterValue) ? 1.0 : 0.0;
         filterShortComplexArray[i] = temporaryComplex;
     }
 
-    currentSampleVector.resize(SAMPLES_TO_STREAM);
+    currentSampleWaveVector.resize(SAMPLES_TO_STREAM);
 
     // reset the current playing position
     m_currentSample = 0;
@@ -35,15 +37,17 @@ bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
 
     getStreamSamples();
 
-    CFFT::Forward(currentSampleVector.data(), SAMPLES_TO_STREAM);
+    CFFT::Forward(currentSampleWaveVector.data(), SAMPLES_TO_STREAM);
 
     applyFilterToSpectrum(true);
 
-    CFFT::Inverse(currentSampleVector.data(), SAMPLES_TO_STREAM);
+    currentSampleSpectrumVector = currentSampleWaveVector;
 
-    filteredWaveDataVector = currentSampleVector;
+    CFFT::Inverse(currentSampleWaveVector.data(), SAMPLES_TO_STREAM);
 
-    applyFilteredSignalToSound(false);
+    filteredWaveDataVector = currentSampleWaveVector;
+
+    applyFilteredSignalToSound(true);
 
     // set the pointer to the next audio samples to be played
     data.samples = &m_samples[m_currentSample];
@@ -65,14 +69,18 @@ bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
 void FFTAudioStream::getStreamSamples() {
     for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
         temporaryShortComplex = m_samples[m_currentSample + i];
-        currentSampleVector[i] = temporaryShortComplex;
+        currentSampleWaveVector[i] = temporaryShortComplex;
     }
 }
 
 void FFTAudioStream::applyFilterToSpectrum(bool isApplied) {
     if (isApplied) {
-        for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
-            currentSampleVector[i] = currentSampleVector[i] * filterShortComplexArray[i];
+        for (int T = 0; T < 4; T++) {
+            for (int i = 0; i < SAMPLES_TO_STREAM / 4; i++) {
+                currentSampleWaveVector[SAMPLES_TO_STREAM / 4 * T + i] =
+                        currentSampleWaveVector[SAMPLES_TO_STREAM / 4 * T + i] *
+                        filterShortComplexArray[(T % 2 == 0 ? i : SAMPLES_TO_STREAM / 4 - i)];
+            }
         }
     }
 }
@@ -80,7 +88,7 @@ void FFTAudioStream::applyFilterToSpectrum(bool isApplied) {
 void FFTAudioStream::applyFilteredSignalToSound(bool isApplied) {
     if (isApplied) {
         for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
-            temporaryShortComplex = currentSampleVector[i];
+            temporaryShortComplex = currentSampleWaveVector[i];
             m_samples[m_currentSample + i] = (sf::Int16) temporaryShortComplex.re();
         }
     }
@@ -91,6 +99,26 @@ void FFTAudioStream::onSeek(sf::Time timeOffset) {
     m_currentSample = static_cast<std::size_t>(timeOffset.asSeconds() * getSampleRate() * getChannelCount());
 }
 
-const std::vector<complex> &FFTAudioStream::getWaveDataVector() const {
+const std::vector<complex> &FFTAudioStream::getCurrentSampleWaveVector() const {
     return filteredWaveDataVector;
+}
+
+const std::vector<complex> &FFTAudioStream::getCurrentSampleSpectrumVector() const {
+    return currentSampleSpectrumVector;
+}
+
+int FFTAudioStream::getLowFilterValue() {
+    return lowFilterValue;
+}
+
+void FFTAudioStream::setLowFilterValue(int lowFilterValue) {
+    FFTAudioStream::lowFilterValue = lowFilterValue;
+}
+
+int FFTAudioStream::getHighFilterValue() {
+    return highFilterValue;
+}
+
+void FFTAudioStream::setHighFilterValue(int highFilterValue) {
+    FFTAudioStream::highFilterValue = highFilterValue;
 }
