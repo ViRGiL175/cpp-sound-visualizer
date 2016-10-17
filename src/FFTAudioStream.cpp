@@ -39,7 +39,7 @@ bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
 
     CFFT::Forward(currentSampleWaveVector.data(), SAMPLES_TO_STREAM);
 
-    applyFilterToSpectrum(true);
+    applyFilterToSpectrum(false);
 
     currentSampleSpectrumVector = currentSampleWaveVector;
 
@@ -47,7 +47,7 @@ bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
 
     filteredWaveDataVector = currentSampleWaveVector;
 
-    applyFilteredSignalToSound(true);
+    applyFilteredSignalToSound(false);
 
     // set the pointer to the next audio samples to be played
     data.samples = &m_samples[m_currentSample];

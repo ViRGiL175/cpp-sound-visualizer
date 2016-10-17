@@ -26,12 +26,25 @@ std::string get_file_contents(const char *filename) {
 
 #define WIDTH 1280
 #define HEIGHT 720
-#define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader.frag"
+//#define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader.frag"
+#define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader_equalizer.frag"
 #define SONG_FILE "D:/Code/Projects/sound-visualizer/BTO.ogg"
 
+enum VILUZLIZATION_MODE {
+    WAVE, SPECTRUM, EQUALIZER
+};
+
 static const int WAVE_DATA_SIZE = 256;
+static const int EQUALIZER_COLUMNS = 32;
+static const int EQUALIZER_INNERTION = 500;
+static const int COLUMNS_MARGIN = 4;
+VILUZLIZATION_MODE viluzlizationMode = WAVE;
 float waveData[WAVE_DATA_SIZE];
 float spectrumData[WAVE_DATA_SIZE];
+float previousSpectrumData[WAVE_DATA_SIZE];
+float visualSpectrumData[WAVE_DATA_SIZE];
+int spectrumIterator = 0;
+int columnsInnertion[EQUALIZER_COLUMNS];
 
 // Vertex shader
 const GLchar *vertexSource =
@@ -134,6 +147,9 @@ int main() {
                             ? fftAudioStream.play()
                             : fftAudioStream.pause();
                             break;
+                        case sf::Keyboard::M:
+//                          Mode switching
+                            break;
                         case sf::Keyboard::R: //Reload the shader
                             //hopefully this is safe
                             glDeleteProgram(shaderProgram);
@@ -186,25 +202,63 @@ int main() {
 
         const auto filteredSpectrumDataVector = fftAudioStream.getCurrentSampleSpectrumVector();
 
+//        if (filteredSpectrumDataVector.data() != NULL) {
+//            int picker = FFTAudioStream::SAMPLES_TO_STREAM / 4 / WAVE_DATA_SIZE;
+//            for (int i = 0; i < WAVE_DATA_SIZE; i++) {
+//                spectrumData[i] = (float) filteredSpectrumDataVector[i * picker].re();
+//                spectrumData[i] *= 0.000001;
+////                spectrumData[i] = 0;
+//            }
+//        }
+
         if (filteredSpectrumDataVector.data() != NULL) {
             int picker = FFTAudioStream::SAMPLES_TO_STREAM / 4 / WAVE_DATA_SIZE;
-            for (int i = 0; i < WAVE_DATA_SIZE; i++) {
-                spectrumData[i] = (float) filteredSpectrumDataVector[i * picker].re();
-                spectrumData[i] *= 0.000001;
+            float sum = 0;
+            int columnWidth = WAVE_DATA_SIZE / EQUALIZER_COLUMNS;
+            for (int columnNumber = 0; columnNumber < EQUALIZER_COLUMNS; columnNumber++) {
+                for (int i = 0; i < columnWidth - COLUMNS_MARGIN; i++) {
+                    int currentIndex = columnWidth * columnNumber + i;
+                    sum += filteredSpectrumDataVector[currentIndex * picker].re();
+                }
+                sum *= 0.00000015;
+                for (int i = 0; i < columnWidth - COLUMNS_MARGIN; i++) {
+                    int currentIndex = columnWidth * columnNumber + i;
+                    if (sum > previousSpectrumData[currentIndex]) {
+                        columnsInnertion[columnNumber] = EQUALIZER_INNERTION;
+                        spectrumData[currentIndex] = sum;
+                    } else {
+                        spectrumData[currentIndex] = previousSpectrumData[currentIndex] -
+                                                     previousSpectrumData[currentIndex] *
+                                                     ((float) EQUALIZER_INNERTION + 1 -
+                                                      columnsInnertion[columnNumber]) / ((float) EQUALIZER_INNERTION);
+                    }
+                }
+                sum = 0;
             }
+        }
+
+        for (int i = 0; i < EQUALIZER_COLUMNS; ++i) {
+            if (columnsInnertion[i] != 0) {
+                columnsInnertion[i]--;
+            }
+        }
+
+        for (int i = 0; i < WAVE_DATA_SIZE; ++i) {
+            previousSpectrumData[i] = spectrumData[i];
         }
 
         glUniform1fv(sampleLoc, WAVE_DATA_SIZE, spectrumData);
 
         const auto filteredWaveDataVector = fftAudioStream.getCurrentSampleWaveVector();
 
-        if (filteredWaveDataVector.data() != NULL) {
-            int picker = FFTAudioStream::SAMPLES_TO_STREAM / WAVE_DATA_SIZE;
-            for (int i = 0; i < WAVE_DATA_SIZE; i++) {
-                waveData[i] = (float) filteredWaveDataVector[i * picker].re();
-                waveData[i] *= 0.0001;
-            }
-        }
+//        if (filteredWaveDataVector.data() != NULL) {
+//            int picker = FFTAudioStream::SAMPLES_TO_STREAM / WAVE_DATA_SIZE;
+//            for (int i = 0; i < WAVE_DATA_SIZE; i++) {
+//                waveData[i] = (float) filteredWaveDataVector[i * picker].re();
+//                waveData[i] *= 0.0001;
+////                waveData[i] *= 0.0;
+//            }
+//        }
 
         glUniform1fv(waveLoc, WAVE_DATA_SIZE, spectrumData);
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
