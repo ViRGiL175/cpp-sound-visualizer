@@ -8,6 +8,7 @@
 #include <SFML/Audio/SoundBuffer.hpp>
 #include <SFML/Audio/Sound.hpp>
 #include <SFML/Audio/Music.hpp>
+#include <map>
 #include "FFTAudioStream.h"
 
 std::string get_file_contents(const char *filename) {
@@ -27,10 +28,10 @@ std::string get_file_contents(const char *filename) {
 #define WIDTH 1280
 #define HEIGHT 720
 //#define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader.frag"
-#define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader_equalizer.frag"
+//#define SHADER_FILE "D:/Code/Projects/sound-visualizer/Shader_equalizer.frag"
 #define SONG_FILE "D:/Code/Projects/sound-visualizer/BTO.ogg"
 
-enum VILUZLIZATION_MODE {
+enum VISUALIZATION_MODE {
     WAVE, SPECTRUM, EQUALIZER
 };
 
@@ -38,13 +39,40 @@ static const int WAVE_DATA_SIZE = 256;
 static const int EQUALIZER_COLUMNS = 32;
 static const int EQUALIZER_INNERTION = 500;
 static const int COLUMNS_MARGIN = 4;
-VILUZLIZATION_MODE viluzlizationMode = WAVE;
+
 float waveData[WAVE_DATA_SIZE];
 float spectrumData[WAVE_DATA_SIZE];
 float previousSpectrumData[WAVE_DATA_SIZE];
 float visualSpectrumData[WAVE_DATA_SIZE];
 int spectrumIterator = 0;
-int columnsInnertion[EQUALIZER_COLUMNS];
+int columnsInertia[EQUALIZER_COLUMNS];
+std::map<int, VISUALIZATION_MODE> visualizerModesMap;
+int currentVisualizerMode = 0;
+
+std::string audioFilePath = "D:/Code/Projects/sound-visualizer/BTO.ogg";
+std::string shaderFilePath = "D:/Code/Projects/sound-visualizer/Shader_equalizer.frag";
+sf::SoundBuffer soundBuffer;
+FFTAudioStream fftAudioStream;
+GLuint vertexShader;
+GLuint fragmentShader;
+GLuint shaderProgram;
+GLint posAttrib;
+GLint timeLoc;
+GLint sampleLoc;
+GLint waveLoc;
+GLint resLoc;
+GLuint vao;
+GLuint vbo;
+
+float shaderVertices[] = {
+        -1.0f, 1.0f,
+        1.0f, 1.0f,
+        1.0f, -1.0f,
+        -1.0f, 1.0f,
+        -1.0f, -1.0f,
+        1.0f, -1.0f
+};
+
 
 // Vertex shader
 const GLchar *vertexSource =
@@ -62,74 +90,27 @@ struct ToGLStr {
     operator const char **() { return &p; }
 };
 
+void equalizerModesInitialization();
+
+void loadAudioFile(std::string filePath);
+
+void deleteShader();
+
+void loadShader(std::string shaderFilePath);
+
+void openGLInitialization();
+
 int main() {
 
-    // load an audio soundBuffer from a sound file
-    sf::SoundBuffer soundBuffer;
-    soundBuffer.loadFromFile(SONG_FILE);
-
-    // initialize and play our custom stream
-    FFTAudioStream fftAudioStream;
-    fftAudioStream.load(soundBuffer);
+    equalizerModesInitialization();
+    loadAudioFile(audioFilePath);
 
     // Create window
     sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "Visualizer", sf::Style::Close);
     window.setVerticalSyncEnabled(true);
 
-    glewExperimental = GL_TRUE;
-    glewInit();
-
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-
-    float vertices[] = {
-            -1.0f, 1.0f,
-            1.0f, 1.0f,
-            1.0f, -1.0f,
-            -1.0f, 1.0f,
-            -1.0f, -1.0f,
-            1.0f, -1.0f
-    };
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
-    glCompileShader(vertexShader);
-
-    // Create and compile the fragment shader
-    std::string shader = get_file_contents(SHADER_FILE);
-
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, ToGLStr(shader), NULL);
-    glCompileShader(fragmentShader);
-
-    // Link the vertex and fragment shader into a shader program
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glBindFragDataLocation(shaderProgram, 0, "gl_FragColor");
-    glLinkProgram(shaderProgram);
-    glUseProgram(shaderProgram);
-
-    // Specify the layout of the vertex data
-    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-    glEnableVertexAttribArray((GLuint) posAttrib);
-    glVertexAttribPointer((GLuint) posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
-    GLint timeLoc = glGetUniformLocation(shaderProgram, "iGlobalTime");
-
-    GLint sampleLoc = glGetUniformLocation(shaderProgram, "Spectrum");
-    GLint waveLoc = glGetUniformLocation(shaderProgram, "Wavedata");
-
-    GLint resLoc = glGetUniformLocation(shaderProgram, "iResolution");
-
-    glUniform3f(resLoc, WIDTH, HEIGHT, WIDTH * HEIGHT);
+    openGLInitialization();
+    loadShader(shaderFilePath);
 
     while (window.isOpen()) {
         sf::Event windowEvent;
@@ -149,45 +130,22 @@ int main() {
                             break;
                         case sf::Keyboard::M:
 //                          Mode switching
+                            currentVisualizerMode == visualizerModesMap.size() - 1
+                            ? (currentVisualizerMode = 0)
+                            : (currentVisualizerMode++);
+                            switch (visualizerModesMap[currentVisualizerMode]) {
+                                case WAVE:
+                                    break;
+                                case SPECTRUM:
+                                    break;
+                                case EQUALIZER:
+                                    break;
+                            }
                             break;
                         case sf::Keyboard::R: //Reload the shader
                             //hopefully this is safe
-                            glDeleteProgram(shaderProgram);
-                            glDeleteShader(fragmentShader);
-                            glDeleteShader(vertexShader);
-
-                            vertexShader = glCreateShader(GL_VERTEX_SHADER);
-                            glShaderSource(vertexShader, 1, &vertexSource, NULL);
-                            glCompileShader(vertexShader);
-
-                            // Create and compile the fragment shader
-                            shader = get_file_contents(SHADER_FILE);
-
-                            fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-                            glShaderSource(fragmentShader, 1, ToGLStr(shader), NULL);
-                            glCompileShader(fragmentShader);
-
-                            // Link the vertex and fragment shader into a shader program
-                            shaderProgram = glCreateProgram();
-                            glAttachShader(shaderProgram, vertexShader);
-                            glAttachShader(shaderProgram, fragmentShader);
-                            glBindFragDataLocation(shaderProgram, 0, "gl_FragColor");
-                            glLinkProgram(shaderProgram);
-                            glUseProgram(shaderProgram);
-
-                            // Specify the layout of the vertex data
-                            posAttrib = glGetAttribLocation(shaderProgram, "position");
-                            glEnableVertexAttribArray((GLuint) posAttrib);
-                            glVertexAttribPointer((GLuint) posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
-                            timeLoc = glGetUniformLocation(shaderProgram, "iGlobalTime");
-
-                            sampleLoc = glGetUniformLocation(shaderProgram, "Spectrum");
-                            waveLoc = glGetUniformLocation(shaderProgram, "Wavedata");
-
-                            resLoc = glGetUniformLocation(shaderProgram, "iResolution");
-
-                            glUniform3f(resLoc, WIDTH, HEIGHT, WIDTH * HEIGHT);
+                            deleteShader();
+                            loadShader(shaderFilePath);
                             break;
                         case sf::Keyboard::Escape:
                             window.close();
@@ -224,13 +182,13 @@ int main() {
                 for (int i = 0; i < columnWidth - COLUMNS_MARGIN; i++) {
                     int currentIndex = columnWidth * columnNumber + i;
                     if (sum > previousSpectrumData[currentIndex]) {
-                        columnsInnertion[columnNumber] = EQUALIZER_INNERTION;
+                        columnsInertia[columnNumber] = EQUALIZER_INNERTION;
                         spectrumData[currentIndex] = sum;
                     } else {
                         spectrumData[currentIndex] = previousSpectrumData[currentIndex] -
                                                      previousSpectrumData[currentIndex] *
                                                      ((float) EQUALIZER_INNERTION + 1 -
-                                                      columnsInnertion[columnNumber]) / ((float) EQUALIZER_INNERTION);
+                                                      columnsInertia[columnNumber]) / ((float) EQUALIZER_INNERTION);
                     }
                 }
                 sum = 0;
@@ -238,8 +196,8 @@ int main() {
         }
 
         for (int i = 0; i < EQUALIZER_COLUMNS; ++i) {
-            if (columnsInnertion[i] != 0) {
-                columnsInnertion[i]--;
+            if (columnsInertia[i] != 0) {
+                columnsInertia[i]--;
             }
         }
 
@@ -268,11 +226,72 @@ int main() {
     }
 
     // Clean up
+    deleteShader();
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
+}
+
+void openGLInitialization() {
+    glewExperimental = GL_TRUE;
+    glewInit();
+
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vbo);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(shaderVertices), shaderVertices, GL_STATIC_DRAW);
+}
+
+void loadShader(std::string shaderFilePath) {
+    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexSource, NULL);
+    glCompileShader(vertexShader);
+
+    // Create and compile the fragment shader
+    std::string shaderData = get_file_contents(shaderFilePath.data());
+
+    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, ToGLStr(shaderData), NULL);
+    glCompileShader(fragmentShader);
+
+    // Link the vertex and fragment shader into a shader program
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glBindFragDataLocation(shaderProgram, 0, "gl_FragColor");
+    glLinkProgram(shaderProgram);
+    glUseProgram(shaderProgram);
+
+    // Specify the layout of the vertex data
+    posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glEnableVertexAttribArray((GLuint) posAttrib);
+    glVertexAttribPointer((GLuint) posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    timeLoc = glGetUniformLocation(shaderProgram, "iGlobalTime");
+    sampleLoc = glGetUniformLocation(shaderProgram, "Spectrum");
+    waveLoc = glGetUniformLocation(shaderProgram, "Wavedata");
+    resLoc = glGetUniformLocation(shaderProgram, "iResolution");
+
+    glUniform3f(resLoc, WIDTH, HEIGHT, WIDTH * HEIGHT);
+}
+
+void loadAudioFile(std::string filePath) {
+    // load an audio soundBuffer from a sound file
+    soundBuffer.loadFromFile(audioFilePath);
+    // initialize and play our custom stream
+    fftAudioStream.load(soundBuffer);
+}
+
+void equalizerModesInitialization() {
+    visualizerModesMap[0] = WAVE;
+    visualizerModesMap[1] = SPECTRUM;
+    visualizerModesMap[2] = EQUALIZER;
+}
+
+void deleteShader() {
     glDeleteProgram(shaderProgram);
     glDeleteShader(fragmentShader);
     glDeleteShader(vertexShader);
-
-    glDeleteBuffers(1, &vbo);
-
-    glDeleteVertexArrays(1, &vao);
 }
