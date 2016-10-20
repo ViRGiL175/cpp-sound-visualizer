@@ -29,7 +29,9 @@ std::string get_file_contents(const char *filename) {
 #define HEIGHT 720
 #define SHADER_FILE_WAVE "D:/Code/Projects/sound-visualizer/Shader.frag"
 #define SHADER_FILE_EQUALIZER "D:/Code/Projects/sound-visualizer/Shader_equalizer.frag"
-#define SONG_FILE "D:/Code/Projects/sound-visualizer/BTO.ogg"
+#define SONG_FILE_BTO "D:/Code/Projects/sound-visualizer/BTO.ogg"
+#define SONG_FILE_GFR "D:/Code/Projects/sound-visualizer/GFR.ogg"
+#define SONG_FILE_GTA "D:/Code/Projects/sound-visualizer/GTA.ogg"
 
 enum VISUALIZATION_MODE {
     WAVE, SPECTRUM, EQUALIZER
@@ -44,11 +46,11 @@ float waveData[WAVE_DATA_SIZE];
 float spectrumData[WAVE_DATA_SIZE];
 float previousSpectrumData[WAVE_DATA_SIZE];
 int columnsInertia[EQUALIZER_COLUMNS];
-std::map<int, VISUALIZATION_MODE> visualizerModesMap;
-int currentVisualizerMode = 0;
+std::map<int, std::string> shaderPathMap;
+std::map<int, std::string> songsPathMap;
+int currentShader = 0;
+int currentSong = 0;
 
-std::string audioFilePath = "D:/Code/Projects/sound-visualizer/BTO.ogg";
-std::string shaderFilePath = SHADER_FILE_WAVE;
 sf::SoundBuffer soundBuffer;
 FFTAudioStream fftAudioStream;
 GLuint vertexShader;
@@ -106,17 +108,21 @@ void spectrumVisualisation(const std::vector<complex> dataVector);
 
 void equalizerVisualization(const std::vector<complex> dataVector);
 
+void songsInitialization();
+
 int main() {
 
     equalizerModesInitialization();
-    loadAudioFile(audioFilePath);
+    songsInitialization();
+
+    loadAudioFile(songsPathMap[currentSong]);
 
     // Create window
     sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "Visualizer", sf::Style::Close);
     window.setVerticalSyncEnabled(true);
 
     openGLInitialization();
-    loadShader(shaderFilePath);
+    loadShader(shaderPathMap[currentShader]);
 
     while (window.isOpen()) {
         sf::Event windowEvent;
@@ -136,29 +142,22 @@ int main() {
                             break;
                         case sf::Keyboard::M:
                             // Mode switching
-                            currentVisualizerMode == visualizerModesMap.size() - 1
-                            ? (currentVisualizerMode = 0)
-                            : (currentVisualizerMode++);
-                            switch (visualizerModesMap[currentVisualizerMode]) {
-                                case WAVE:
-                                    shaderFilePath = SHADER_FILE_WAVE;
-                                    break;
-                                case SPECTRUM:
-                                    shaderFilePath = SHADER_FILE_WAVE;
-                                    break;
-                                case EQUALIZER:
-                                    shaderFilePath = SHADER_FILE_EQUALIZER;
-                                    break;
-                                default:
-                                    break;
-                            }
-                            loadShader(shaderFilePath);
+                            currentShader == shaderPathMap.size() - 1
+                            ? (currentShader = 0)
+                            : (currentShader++);
+                            loadShader(shaderPathMap[currentShader]);
                             break;
                         case sf::Keyboard::R:
                             // Reload the shader
                             // hopefully this is safe
                             deleteShader();
-                            loadShader(shaderFilePath);
+                            loadShader(shaderPathMap[currentShader]);
+                            break;
+                        case sf::Keyboard::T:
+                            currentSong == songsPathMap.size() - 1
+                            ? (currentSong = 0)
+                            : (currentSong++);
+                            loadAudioFile(songsPathMap[currentSong]);
                             break;
                         case sf::Keyboard::Escape:
                             window.close();
@@ -174,7 +173,7 @@ int main() {
         const auto filteredSpectrumDataVector = fftAudioStream.getCurrentSampleSpectrumVector();
         const auto filteredWaveDataVector = fftAudioStream.getCurrentSampleWaveVector();
 
-        switch (currentVisualizerMode) {
+        switch (currentShader) {
             case WAVE:
                 waveDataVisualization(filteredWaveDataVector);
                 glUniform1fv(waveLoc, WAVE_DATA_SIZE, waveData);
@@ -317,15 +316,21 @@ void loadShader(std::string shaderFilePath) {
 
 void loadAudioFile(std::string filePath) {
     // load an audio soundBuffer from a sound file
-    soundBuffer.loadFromFile(audioFilePath);
+    soundBuffer.loadFromFile(filePath);
     // initialize and play our custom stream
     fftAudioStream.load(soundBuffer);
 }
 
 void equalizerModesInitialization() {
-    visualizerModesMap[0] = WAVE;
-    visualizerModesMap[1] = SPECTRUM;
-    visualizerModesMap[2] = EQUALIZER;
+    shaderPathMap[WAVE] = SHADER_FILE_WAVE;
+    shaderPathMap[SPECTRUM] = SHADER_FILE_WAVE;
+    shaderPathMap[EQUALIZER] = SHADER_FILE_EQUALIZER;
+}
+
+void songsInitialization() {
+    songsPathMap[0] = SONG_FILE_BTO;
+    songsPathMap[1] = SONG_FILE_GFR;
+    songsPathMap[2] = SONG_FILE_GTA;
 }
 
 void deleteShader() {
