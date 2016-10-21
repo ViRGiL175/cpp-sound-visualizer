@@ -12,14 +12,9 @@ void FFTAudioStream::load(const sf::SoundBuffer &buffer) {
     // extract the audio samples from the sound buffer to our own container
     m_samples.assign(buffer.getSamples(), buffer.getSamples() + buffer.getSampleCount());
 
-    highFilterValue = 50;
-    lowFilterValue = 30;
-    complex temporaryComplex;
-    filterShortComplexArray.resize(SAMPLES_TO_STREAM / 4);
-    for (int i = 0; i < SAMPLES_TO_STREAM / 4; i++) {
-        temporaryComplex = (i > lowFilterValue && i < highFilterValue) ? 1.0 : 0.0;
-        filterShortComplexArray[i] = temporaryComplex;
-    }
+    lowFilterValue = 0;
+    highFilterValue = SAMPLES_TO_STREAM / 4;
+    generateFilterVector();
 
     currentSampleWaveVector.resize(SAMPLES_TO_STREAM);
 
@@ -28,6 +23,15 @@ void FFTAudioStream::load(const sf::SoundBuffer &buffer) {
 
     // initialize the base class
     initialize(buffer.getChannelCount(), buffer.getSampleRate());
+}
+
+void FFTAudioStream::generateFilterVector() {
+    complex temporaryComplex;
+    filterShortComplexVector.resize(SAMPLES_TO_STREAM / 4);
+    for (int i = 0; i < SAMPLES_TO_STREAM / 4; i++) {
+        temporaryComplex = (i > lowFilterValue && i < highFilterValue) ? 1.0 : 0.0;
+        filterShortComplexVector[i] = temporaryComplex;
+    }
 }
 
 bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
@@ -81,7 +85,7 @@ void FFTAudioStream::applyFilterToSpectrum(bool isApplied) {
             for (int i = 0; i < SAMPLES_TO_STREAM / 4; i++) {
                 currentSampleWaveVector[SAMPLES_TO_STREAM / 4 * T + i] =
                         currentSampleWaveVector[SAMPLES_TO_STREAM / 4 * T + i] *
-                        filterShortComplexArray[(T % 2 == 0 ? i : SAMPLES_TO_STREAM / 4 - i)];
+                        filterShortComplexVector[(T % 2 == 0 ? i : SAMPLES_TO_STREAM / 4 - i)];
             }
         }
     }
@@ -109,22 +113,28 @@ const std::vector<complex> &FFTAudioStream::getCurrentSampleSpectrumVector() con
     return currentSampleSpectrumVector;
 }
 
+const std::vector<complex> &FFTAudioStream::getCurrentSampleCleanSpectrumVector() const {
+    return currentSampleCleanSpectrumVector;
+}
+
 float FFTAudioStream::getLowFilterValue() {
     return lowFilterValue;
 }
 
-void FFTAudioStream::setLowFilterValue(int lowFilterValue) {
-    FFTAudioStream::lowFilterValue = lowFilterValue;
+void FFTAudioStream::setLowFilterValue(float lowFilterValue) {
+    if ((lowFilterValue >= 0) && (lowFilterValue <= SAMPLES_TO_STREAM / 4)) {
+        FFTAudioStream::lowFilterValue = lowFilterValue;
+        generateFilterVector();
+    }
 }
 
 float FFTAudioStream::getHighFilterValue() {
     return highFilterValue;
 }
 
-void FFTAudioStream::setHighFilterValue(int highFilterValue) {
-    FFTAudioStream::highFilterValue = highFilterValue;
-}
-
-const std::vector<complex> &FFTAudioStream::getCurrentSampleCleanSpectrumVector() const {
-    return currentSampleCleanSpectrumVector;
+void FFTAudioStream::setHighFilterValue(float highFilterValue) {
+    if ((highFilterValue >= 0) && (highFilterValue <= SAMPLES_TO_STREAM / 4)) {
+        FFTAudioStream::highFilterValue = highFilterValue;
+        generateFilterVector();
+    }
 }

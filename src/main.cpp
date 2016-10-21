@@ -163,6 +163,18 @@ int main() {
                             : (currentSong++);
                             loadAudioFile(songsPathMap[currentSong]);
                             break;
+                        case sf::Keyboard::Q:
+                            fftAudioStream.setLowFilterValue(fftAudioStream.getLowFilterValue() + 5);
+                            break;
+                        case sf::Keyboard::Z:
+                            fftAudioStream.setLowFilterValue(fftAudioStream.getLowFilterValue() - 5);
+                            break;
+                        case sf::Keyboard::W:
+                            fftAudioStream.setHighFilterValue(fftAudioStream.getHighFilterValue() + 5);
+                            break;
+                        case sf::Keyboard::X:
+                            fftAudioStream.setHighFilterValue(fftAudioStream.getHighFilterValue() - 5);
+                            break;
                         case sf::Keyboard::Escape:
                             window.close();
                             break;

@@ -31,7 +31,7 @@ void main()
 	if ((gl_FragCoord.x > lowFilter / 256.0 * iResolution.x * 0.5 ) && (gl_FragCoord.x < highFilter / 256.0 * iResolution.x * 0.5)) {
 	    gl_FragColor = vec4(r-abs(r*0.2*sin(time/5)), r-abs(r*0.2*sin(time/7)), r-abs(r*0.2*sin(time/9)), 0);
 	} else {
-	    r = r / 80;
+	    r = r / 40;
 	  	gl_FragColor = vec4(r-abs(r*0.2*sin(time/5)), r-abs(r*0.2*sin(time/7)), r-abs(r*0.2*sin(time/9)), 0);
 	}
 }
