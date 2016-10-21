@@ -11,7 +11,7 @@
 #include <map>
 #include "FFTAudioStream.h"
 
-std::string get_file_contents(const char *filename) {
+std::string getFileContents(const char *filename) {
     std::ifstream in(filename, std::ios::in | std::ios::binary);
     if (in) {
         std::string contents;
@@ -27,7 +27,7 @@ std::string get_file_contents(const char *filename) {
 
 #define WIDTH 1280
 #define HEIGHT 720
-#define SHADER_FILE_WAVE "D:/Code/Projects/sound-visualizer/Shader.frag"
+#define SHADER_FILE_WAVE "D:/Code/Projects/sound-visualizer/Shader_wave.frag"
 #define SHADER_FILE_SPECTRUM "D:/Code/Projects/sound-visualizer/Shader_spectrum.frag"
 #define SHADER_FILE_EQUALIZER "D:/Code/Projects/sound-visualizer/Shader_equalizer.frag"
 #define SONG_FILE_BTO "D:/Code/Projects/sound-visualizer/BTO.ogg"
@@ -302,7 +302,7 @@ void loadShader(std::string shaderFilePath) {
     glCompileShader(vertexShader);
 
     // Create and compile the fragment shader
-    std::string shaderData = get_file_contents(shaderFilePath.data());
+    std::string shaderData = getFileContents(shaderFilePath.data());
 
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, ToGLStr(shaderData), NULL);
@@ -322,8 +322,8 @@ void loadShader(std::string shaderFilePath) {
     glVertexAttribPointer((GLuint) posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
     timeLoc = glGetUniformLocation(shaderProgram, "iGlobalTime");
-    sampleLoc = glGetUniformLocation(shaderProgram, "Spectrum");
-    waveLoc = glGetUniformLocation(shaderProgram, "Wavedata");
+    sampleLoc = glGetUniformLocation(shaderProgram, "spectrum");
+    waveLoc = glGetUniformLocation(shaderProgram, "waveData");
     resLoc = glGetUniformLocation(shaderProgram, "iResolution");
     lowFilterLoc = glGetUniformLocation(shaderProgram, "lowFilter");
     highFilterLoc = glGetUniformLocation(shaderProgram, "highFilter");
