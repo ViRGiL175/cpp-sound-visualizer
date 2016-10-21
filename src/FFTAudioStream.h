@@ -21,11 +21,13 @@ public:
 
     const std::vector<complex> &getCurrentSampleSpectrumVector() const;
 
-    int getLowFilterValue();
+    const std::vector<complex> &getCurrentSampleCleanSpectrumVector() const;
+
+    float getLowFilterValue();
 
     void setLowFilterValue(int lowFilterValue);
 
-    int getHighFilterValue();
+    float getHighFilterValue();
 
     void setHighFilterValue(int highFilterValue);
 
@@ -41,16 +43,17 @@ private:
 
     void getStreamSamples();
 
-    int highFilterValue;
-    int lowFilterValue;
+    float highFilterValue;
+    float lowFilterValue;
     std::size_t m_currentSample;
     std::vector<sf::Int16> m_samples;
     std::vector<complex> currentSampleWaveVector;
     std::vector<complex> currentSampleSpectrumVector;
+    std::vector<complex> currentSampleCleanSpectrumVector;
     std::vector<complex> filterShortComplexArray;
     std::vector<complex> filteredWaveDataVector;
-    complex temporaryShortComplex;
 
+    complex temporaryShortComplex;
 };
 
 

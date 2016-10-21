@@ -28,6 +28,7 @@ std::string get_file_contents(const char *filename) {
 #define WIDTH 1280
 #define HEIGHT 720
 #define SHADER_FILE_WAVE "D:/Code/Projects/sound-visualizer/Shader.frag"
+#define SHADER_FILE_SPECTRUM "D:/Code/Projects/sound-visualizer/Shader_spectrum.frag"
 #define SHADER_FILE_EQUALIZER "D:/Code/Projects/sound-visualizer/Shader_equalizer.frag"
 #define SONG_FILE_BTO "D:/Code/Projects/sound-visualizer/BTO.ogg"
 #define SONG_FILE_GFR "D:/Code/Projects/sound-visualizer/GFR.ogg"
@@ -63,6 +64,8 @@ GLint waveLoc;
 GLint resLoc;
 GLuint vao;
 GLuint vbo;
+GLint lowFilterLoc;
+GLint highFilterLoc;
 
 float shaderVertices[] = {
         -1.0f, 1.0f,
@@ -89,6 +92,7 @@ struct ToGLStr {
 
     operator const char **() { return &p; }
 };
+
 
 void equalizerModesInitialization();
 
@@ -170,20 +174,19 @@ int main() {
         GLfloat time = (GLfloat) clock() / (GLfloat) CLOCKS_PER_SEC;
         glUniform1f(timeLoc, time);
 
-        const auto filteredSpectrumDataVector = fftAudioStream.getCurrentSampleSpectrumVector();
-        const auto filteredWaveDataVector = fftAudioStream.getCurrentSampleWaveVector();
-
         switch (currentShader) {
             case WAVE:
-                waveDataVisualization(filteredWaveDataVector);
+                waveDataVisualization(fftAudioStream.getCurrentSampleWaveVector());
                 glUniform1fv(waveLoc, WAVE_DATA_SIZE, waveData);
                 break;
             case SPECTRUM:
-                spectrumVisualisation(filteredSpectrumDataVector);
+                spectrumVisualisation(fftAudioStream.getCurrentSampleCleanSpectrumVector());
                 glUniform1fv(waveLoc, WAVE_DATA_SIZE, spectrumData);
+                glUniform1f(lowFilterLoc, fftAudioStream.getLowFilterValue());
+                glUniform1f(highFilterLoc, fftAudioStream.getHighFilterValue());
                 break;
             case EQUALIZER:
-                equalizerVisualization(filteredSpectrumDataVector);
+                equalizerVisualization(fftAudioStream.getCurrentSampleSpectrumVector());
                 glUniform1fv(waveLoc, WAVE_DATA_SIZE, spectrumData);
                 break;
             default:
@@ -310,6 +313,8 @@ void loadShader(std::string shaderFilePath) {
     sampleLoc = glGetUniformLocation(shaderProgram, "Spectrum");
     waveLoc = glGetUniformLocation(shaderProgram, "Wavedata");
     resLoc = glGetUniformLocation(shaderProgram, "iResolution");
+    lowFilterLoc = glGetUniformLocation(shaderProgram, "lowFilter");
+    highFilterLoc = glGetUniformLocation(shaderProgram, "highFilter");
 
     glUniform3f(resLoc, WIDTH, HEIGHT, WIDTH * HEIGHT);
 }
@@ -323,7 +328,7 @@ void loadAudioFile(std::string filePath) {
 
 void equalizerModesInitialization() {
     shaderPathMap[WAVE] = SHADER_FILE_WAVE;
-    shaderPathMap[SPECTRUM] = SHADER_FILE_WAVE;
+    shaderPathMap[SPECTRUM] = SHADER_FILE_SPECTRUM;
     shaderPathMap[EQUALIZER] = SHADER_FILE_EQUALIZER;
 }
 

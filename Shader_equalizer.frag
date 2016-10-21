@@ -22,7 +22,7 @@ void main()
 	float wave = 0;
 	InterpolateValue(x*iResolution.x, wave);
 
-	if (gl_FragCoord.y < wave * 1000) {
+	if (y < wave) {
 	    gl_FragColor = vec4(0.6 + 0.4*sin(time + 3.14), 0.6 + 0.4*sin(time + 3.14 * 2), 0.6 + 0.4*sin(time + 0.7) , 0);
 	} else {
 		gl_FragColor = vec4(0, 0, 0, 0);

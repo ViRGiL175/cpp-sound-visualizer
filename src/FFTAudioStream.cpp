@@ -39,7 +39,9 @@ bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
 
     CFFT::Forward(currentSampleWaveVector.data(), SAMPLES_TO_STREAM);
 
-    applyFilterToSpectrum(false);
+    currentSampleCleanSpectrumVector = currentSampleWaveVector;
+
+    applyFilterToSpectrum(true);
 
     currentSampleSpectrumVector = currentSampleWaveVector;
 
@@ -47,7 +49,7 @@ bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
 
     filteredWaveDataVector = currentSampleWaveVector;
 
-    applyFilteredSignalToSound(false);
+    applyFilteredSignalToSound(true);
 
     // set the pointer to the next audio samples to be played
     data.samples = &m_samples[m_currentSample];
@@ -107,7 +109,7 @@ const std::vector<complex> &FFTAudioStream::getCurrentSampleSpectrumVector() con
     return currentSampleSpectrumVector;
 }
 
-int FFTAudioStream::getLowFilterValue() {
+float FFTAudioStream::getLowFilterValue() {
     return lowFilterValue;
 }
 
@@ -115,10 +117,14 @@ void FFTAudioStream::setLowFilterValue(int lowFilterValue) {
     FFTAudioStream::lowFilterValue = lowFilterValue;
 }
 
-int FFTAudioStream::getHighFilterValue() {
+float FFTAudioStream::getHighFilterValue() {
     return highFilterValue;
 }
 
 void FFTAudioStream::setHighFilterValue(int highFilterValue) {
     FFTAudioStream::highFilterValue = highFilterValue;
+}
+
+const std::vector<complex> &FFTAudioStream::getCurrentSampleCleanSpectrumVector() const {
+    return currentSampleCleanSpectrumVector;
 }
