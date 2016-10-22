@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -v")
 set(PROJECT_NAME sound-visualizer)
-set(INSTALL_PATH ./out)
-set(AQUILA_DIRECTORY "D:/Code/Libs/aquila-lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${sound-visualizer_SOURCE_DIR}/out")
 
 project(${PROJECT_NAME})
 

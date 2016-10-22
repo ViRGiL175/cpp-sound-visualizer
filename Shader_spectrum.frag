@@ -28,8 +28,8 @@ void main()
 	wave = 0.5 - wave / 3; //centers wave
 
 	float r = abs(THICKNESS/(wave - y));
-	if ((gl_FragCoord.x > lowFilter / 256.0 * iResolution.x * 0.5 ) &&
-	    (gl_FragCoord.x < highFilter / 256.0 * iResolution.x * 0.5)) {
+	if ((gl_FragCoord.x > lowFilter / 128.0 * iResolution.x * 0.5 ) &&
+	    (gl_FragCoord.x < highFilter / 128.0 * iResolution.x * 0.5)) {
 	    gl_FragColor = vec4(
 	        r - abs(r * 0.2 * sin(time / 5)), r - abs(r * 0.2 * sin(time / 7)), r - abs(r * 0.2 * sin(time / 9)), 0);
 	} else {

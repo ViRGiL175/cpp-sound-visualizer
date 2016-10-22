@@ -6,8 +6,6 @@
 #include "FFTAudioStream.h"
 #include "fft.h"
 
-#define SONG_FILE_BTO "D:/Code/Projects/sound-visualizer/BTO.ogg"
-
 void FFTAudioStream::load(const sf::SoundBuffer &buffer) {
     // extract the audio samples from the sound buffer to our own container
     m_samples.assign(buffer.getSamples(), buffer.getSamples() + buffer.getSampleCount());

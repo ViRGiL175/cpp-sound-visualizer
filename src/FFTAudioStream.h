@@ -13,7 +13,7 @@ class FFTAudioStream : public sf::SoundStream {
 
 public:
 
-    static const int SAMPLES_TO_STREAM = 1024 * 2;
+    static const int SAMPLES_TO_STREAM = 1024;
 
     void load(const sf::SoundBuffer &buffer);
 

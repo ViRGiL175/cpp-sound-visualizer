@@ -30,9 +30,6 @@ std::string getFileContents(const char *filename) {
 #define SHADER_FILE_WAVE "D:/Code/Projects/sound-visualizer/Shader_wave.frag"
 #define SHADER_FILE_SPECTRUM "D:/Code/Projects/sound-visualizer/Shader_spectrum.frag"
 #define SHADER_FILE_EQUALIZER "D:/Code/Projects/sound-visualizer/Shader_equalizer.frag"
-#define SONG_FILE_BTO "D:/Code/Projects/sound-visualizer/BTO.ogg"
-#define SONG_FILE_GFR "D:/Code/Projects/sound-visualizer/GFR.ogg"
-#define SONG_FILE_GTA "D:/Code/Projects/sound-visualizer/GTA.ogg"
 
 enum VISUALIZATION_MODE {
     WAVE, SPECTRUM, EQUALIZER
@@ -112,17 +109,16 @@ void spectrumVisualisation(const std::vector<complex> dataVector);
 
 void equalizerVisualization(const std::vector<complex> dataVector);
 
-void songsInitialization();
+void getFileNames(int argumentCount, char *argumentArray[]);
 
-int main() {
+int main(int argumentCount, char *argumentArray[]) {
 
-    equalizerModesInitialization();
-    songsInitialization();
-
+    getFileNames(argumentCount, argumentArray);
     loadAudioFile(songsPathMap[currentSong]);
+    equalizerModesInitialization();
 
     // Create window
-    sf::Window window(sf::VideoMode(WIDTH, HEIGHT), "Visualizer", sf::Style::Close);
+    sf::Window window(sf::VideoMode(WIDTH, HEIGHT), songsPathMap[currentSong], sf::Style::Close);
     window.setVerticalSyncEnabled(true);
 
     openGLInitialization();
@@ -162,6 +158,8 @@ int main() {
                             ? (currentSong = 0)
                             : (currentSong++);
                             loadAudioFile(songsPathMap[currentSong]);
+                            window.setTitle(songsPathMap[currentSong]);
+                            fftAudioStream.play();
                             break;
                         case sf::Keyboard::Q:
                             fftAudioStream.setLowFilterValue(fftAudioStream.getLowFilterValue() + 5);
@@ -212,6 +210,17 @@ int main() {
         window.display();
     }
     openGLCleanup();
+}
+
+void getFileNames(int argumentCount, char *argumentArray[]) {
+    if (argumentCount < 2) {
+        songsPathMap[0] = "You didn't provide a music file\n";
+    } else {
+        for (int argument = 0; argument < argumentCount - 1; ++argument) {
+            songsPathMap[argument] = argumentArray[argument + 1];
+            std::cout << argumentArray[argument + 1] << std::endl;
+        }
+    }
 }
 
 void waveDataVisualization(const std::vector<complex> dataVector) {
@@ -332,6 +341,7 @@ void loadShader(std::string shaderFilePath) {
 }
 
 void loadAudioFile(std::string filePath) {
+    fftAudioStream.stop();
     // load an audio soundBuffer from a sound file
     soundBuffer.loadFromFile(filePath);
     // initialize and play our custom stream
@@ -342,12 +352,6 @@ void equalizerModesInitialization() {
     shaderPathMap[WAVE] = SHADER_FILE_WAVE;
     shaderPathMap[SPECTRUM] = SHADER_FILE_SPECTRUM;
     shaderPathMap[EQUALIZER] = SHADER_FILE_EQUALIZER;
-}
-
-void songsInitialization() {
-    songsPathMap[0] = SONG_FILE_BTO;
-    songsPathMap[1] = SONG_FILE_GFR;
-    songsPathMap[2] = SONG_FILE_GTA;
 }
 
 void deleteShader() {
