@@ -111,6 +111,20 @@ void equalizerVisualization(const std::vector<complex> dataVector);
 
 void getFileNames(int argumentCount, char *argumentArray[]);
 
+/**
+ *  Main function
+ *
+ *  @Controls
+ *  P - play/pause;
+ *  M - switch visualization mode;
+ *  R - reload the shader;
+ *  T - change track;
+ *  Q - increase bottom filter threshold;
+ *  Z - decrease bottom filter threshold;
+ *  W - increase upper filter threshold;
+ *  X - decrease upper filter threshold;
+ *  Escape - exit.
+ * */
 int main(int argumentCount, char *argumentArray[]) {
 
     getFileNames(argumentCount, argumentArray);
@@ -212,6 +226,11 @@ int main(int argumentCount, char *argumentArray[]) {
     openGLCleanup();
 }
 
+/**
+ *  Getting file from main() arguments.
+ *
+ *  You can just drag&drop music files on *.exe file or use "Open with..." dialogue.
+ * */
 void getFileNames(int argumentCount, char *argumentArray[]) {
     if (argumentCount < 2) {
         songsPathMap[0] = "You didn't provide a music file\n";
@@ -223,6 +242,13 @@ void getFileNames(int argumentCount, char *argumentArray[]) {
     }
 }
 
+/**
+ *  Wave data visualization function.
+ *
+ *  Simply shows sample wave visualization.
+ *
+ *  @param dataVector should contain wave data.
+ * */
 void waveDataVisualization(const std::vector<complex> dataVector) {
     if (dataVector.data() != NULL) {
         int picker = FFTAudioStream::SAMPLES_TO_STREAM / WAVE_DATA_SIZE;
@@ -233,6 +259,16 @@ void waveDataVisualization(const std::vector<complex> dataVector) {
     }
 }
 
+/**
+ *  "Equalizer" visualization function.
+ *
+ *  Shows dynamic spectrum waves with inertial animation.
+ *  Pick data from big sample vector and convert to screen array.
+ *  Also you can control number of columns and columns margin with EQUALIZER_COLUMNS and COLUMNS_MARGIN.
+ *  You can change inertia with EQUALIZER_INERTIA.
+ *
+ *  @param dataVector should contain spectrum data.
+ * */
 void equalizerVisualization(const std::vector<complex> dataVector) {
     if (dataVector.data() != NULL) {
         int picker = FFTAudioStream::SAMPLES_TO_STREAM / 4 / WAVE_DATA_SIZE;
@@ -275,6 +311,13 @@ void equalizerVisualization(const std::vector<complex> dataVector) {
     }
 }
 
+/**
+ *  Spectrum visualization function.
+ *
+ *  Pick data from big sample vector and convert to screen array.
+ *
+ *  @param dataVector should contain spectrum data.
+ * */
 void spectrumVisualisation(const std::vector<complex> dataVector) {
     if (dataVector.data() != NULL) {
         int picker = FFTAudioStream::SAMPLES_TO_STREAM / 4 / WAVE_DATA_SIZE;
@@ -285,6 +328,9 @@ void spectrumVisualisation(const std::vector<complex> dataVector) {
     }
 }
 
+/**
+ *  Final openGL memory cleanup.
+ * */
 void openGLCleanup() {
     // Clean up
     deleteShader();
@@ -292,6 +338,9 @@ void openGLCleanup() {
     glDeleteVertexArrays(1, &vao);
 }
 
+/**
+ *  Setup base vertex shader.
+ * */
 void openGLInitialization() {
     glewExperimental = GL_TRUE;
     glewInit();
@@ -305,6 +354,13 @@ void openGLInitialization() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(shaderVertices), shaderVertices, GL_STATIC_DRAW);
 }
 
+/**
+ *  Shader file loading.
+ *
+ *  Loads shader file (you can use absolute paths), sets shader variables location.
+ *
+ *  @param shaderFilePath is a path to your *.frag file.
+ * */
 void loadShader(std::string shaderFilePath) {
     vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexSource, NULL);
@@ -340,6 +396,13 @@ void loadShader(std::string shaderFilePath) {
     glUniform3f(resLoc, WIDTH, HEIGHT, WIDTH * HEIGHT);
 }
 
+/**
+ *  Audio file loading to soundBuffer.
+ *
+ *  @warning Use >= 160 KB/sec file bitrate.
+ *
+ *  @param filePath takes from main() arguments, don't use absolute path in release.
+ */
 void loadAudioFile(std::string filePath) {
     fftAudioStream.stop();
     // load an audio soundBuffer from a sound file
@@ -348,6 +411,12 @@ void loadAudioFile(std::string filePath) {
     fftAudioStream.load(soundBuffer);
 }
 
+/**
+ *  Shader files initialization.
+ *
+ *  Add shader file path for each visualization mode.
+ *  It will be used in visualization switching.
+ */
 void equalizerModesInitialization() {
     shaderPathMap[WAVE] = SHADER_FILE_WAVE;
     shaderPathMap[SPECTRUM] = SHADER_FILE_SPECTRUM;

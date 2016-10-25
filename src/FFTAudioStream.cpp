@@ -8,7 +8,7 @@
 
 void FFTAudioStream::load(const sf::SoundBuffer &buffer) {
     // extract the audio samples from the sound buffer to our own container
-    m_samples.assign(buffer.getSamples(), buffer.getSamples() + buffer.getSampleCount());
+    samplesVector.assign(buffer.getSamples(), buffer.getSamples() + buffer.getSampleCount());
 
     lowFilterValue = 0;
     highFilterValue = SAMPLES_TO_STREAM / 4;
@@ -17,7 +17,7 @@ void FFTAudioStream::load(const sf::SoundBuffer &buffer) {
     currentSampleWaveVector.resize(SAMPLES_TO_STREAM);
 
     // reset the current playing position
-    m_currentSample = 0;
+    currentSample = 0;
 
     // initialize the base class
     initialize(buffer.getChannelCount(), buffer.getSampleRate());
@@ -54,25 +54,25 @@ bool FFTAudioStream::onGetData(sf::SoundStream::Chunk &data) {
     applyFilteredSignalToSound(true);
 
     // set the pointer to the next audio samples to be played
-    data.samples = &m_samples[m_currentSample];
+    data.samples = &samplesVector[currentSample];
 
     // have we reached the end of the sound?
-    if (m_currentSample + SAMPLES_TO_STREAM <= m_samples.size()) {
+    if (currentSample + SAMPLES_TO_STREAM <= samplesVector.size()) {
         // end not reached: stream the samples and continue
         data.sampleCount = SAMPLES_TO_STREAM;
-        m_currentSample += SAMPLES_TO_STREAM;
+        currentSample += SAMPLES_TO_STREAM;
         return true;
     } else {
         // end of stream reached: stream the remaining samples and stop playback
-        data.sampleCount = m_samples.size() - m_currentSample;
-        m_currentSample = m_samples.size();
+        data.sampleCount = samplesVector.size() - currentSample;
+        currentSample = samplesVector.size();
         return false;
     }
 }
 
 void FFTAudioStream::getStreamSamples() {
     for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
-        temporaryShortComplex = m_samples[m_currentSample + i];
+        temporaryShortComplex = samplesVector[currentSample + i];
         currentSampleWaveVector[i] = temporaryShortComplex;
     }
 }
@@ -93,14 +93,14 @@ void FFTAudioStream::applyFilteredSignalToSound(bool isApplied) {
     if (isApplied) {
         for (int i = 0; i < SAMPLES_TO_STREAM; i++) {
             temporaryShortComplex = currentSampleWaveVector[i];
-            m_samples[m_currentSample + i] = (sf::Int16) temporaryShortComplex.re();
+            samplesVector[currentSample + i] = (sf::Int16) temporaryShortComplex.re();
         }
     }
 }
 
 void FFTAudioStream::onSeek(sf::Time timeOffset) {
     // compute the corresponding sample index according to the sample rate and channel count
-    m_currentSample = static_cast<std::size_t>(timeOffset.asSeconds() * getSampleRate() * getChannelCount());
+    currentSample = static_cast<std::size_t>(timeOffset.asSeconds() * getSampleRate() * getChannelCount());
 }
 
 const std::vector<complex> &FFTAudioStream::getCurrentSampleWaveVector() const {

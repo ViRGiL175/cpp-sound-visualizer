@@ -9,5 +9,6 @@ project(${PROJECT_NAME})
 aux_source_directory(./src/ SOURCE_FILES)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
+#[[If you havn't integrated SFML plese use find SFML library method from older commits, eg: 2333909 ]]
 target_link_libraries(${PROJECT_NAME} sfml-graphics sfml-audio sfml-window sfml-system)
 target_link_libraries(${PROJECT_NAME} opengl32 glu32 pthread glew32)

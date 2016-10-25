@@ -37,18 +37,31 @@ private:
 
     virtual void onSeek(sf::Time timeOffset);
 
+    /**
+     *  @param isApplied if true temporary processing vector applies to base signal.
+     *  @warning Make sure that applyFilterToSpectrum() is true.
+     * */
     void applyFilteredSignalToSound(bool isApplied);
 
+    /**
+     *  @param isApplied if true filter applies to spectrum (not yet to sound).
+     * */
     void applyFilterToSpectrum(bool isApplied);
 
+    /**
+     *  Get some (SAMPLES_TO_STREAM) samples from base stream to temporary processing vector.
+     * */
     void getStreamSamples();
 
+    /**
+    *  Generates filter vector which will be applied to sample spectrum according to lowFilterValue and highFilterValue.
+    * */
     void generateFilterVector();
 
     float highFilterValue;
     float lowFilterValue;
-    std::size_t m_currentSample;
-    std::vector<sf::Int16> m_samples;
+    std::size_t currentSample;
+    std::vector<sf::Int16> samplesVector;
     std::vector<complex> currentSampleWaveVector;
     std::vector<complex> currentSampleSpectrumVector;
     std::vector<complex> currentSampleCleanSpectrumVector;
